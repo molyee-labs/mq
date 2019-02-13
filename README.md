@@ -1,0 +1,1 @@
+[meque] is a stream-processing software, messaging broker (same as NATS, Kafka)
