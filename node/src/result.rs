@@ -1,39 +1,14 @@
 pub enum Error {
-    ConnClosed,
-    ConnDraining,
-    DrainTimeout,
-    ConnReconnecting,
-    SecureConnRequired,
-    SecureConnWanted,
-    BadSubscription,
-    BadSubscriptionType,
-    BadSubject,
-    SlowConsumer,
-    Timeout,
-    BadTimeout,
-    Authorization,
-    NoServers,
-    JsonParse,
-    ChanArg,
-    MaxPayload,
-    MaxMessages,
-    SyncSubRequired,
-    MultipleTlsConfigs,
-    NoInfoReceived,
-    ReconnectBufExceeded,
-    InvalidConn,
-    InvalidMsg,
-    InvalidArg,
-    InvalidContext,
-    NoEchoNotSupported,
-    ClientIdNotSupported,
-    UserButNoSigCB,
-    NkeyButNoSigCB,
-    NoUserCB,
-    NkeyAndUser,
-    NkeysNotSupported,
-    StaleConn,
-    TokenAlreadySet,
+    Io(std::io::Error),
+    NoSocketAddrsFound(String),
+}
+
+use Error::*;
+
+impl From<std::io::Error> for Error {
+    fn from(err: std::io::Error) -> Self {
+        Io(err)
+    }
 }
 
 pub type Result<T> = std::result::Result<T, Error>;
