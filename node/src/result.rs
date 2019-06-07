@@ -1,13 +1,20 @@
+#[derive(Debug)]
 pub enum Error {
-    Io(std::io::Error),
-    NoSocketAddrsFound(String),
+    IoErr(std::io::Error),
+    NetErr(crate::net::Error),
 }
 
 use Error::*;
 
 impl From<std::io::Error> for Error {
     fn from(err: std::io::Error) -> Self {
-        Io(err)
+        IoErr(err)
+    }
+}
+
+impl From<crate::net::Error> for Error {
+    fn from(err: crate::net::Error) -> Self {
+        NetErr(err)
     }
 }
 

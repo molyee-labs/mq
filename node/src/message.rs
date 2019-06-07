@@ -5,7 +5,7 @@ pub struct Id(Uuid);
 
 impl Id {
     pub fn new() -> Self {
-        Id(Uuid::new_v4())
+        Id(uuid::v4::new())
     }
 }
 

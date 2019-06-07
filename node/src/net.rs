@@ -1,22 +1,14 @@
-use std::net::{SocketAddr, TcpStream, ToSocketAddrs};
-use std::fmt::Display;
+use std::net::{SocketAddr, TcpStream, ToSocketAddrs, Shutdown};
 use std::time::Duration;
 use std::cell::RefCell;
-use crate::result::*;
+use std::io::Write;
+use std::fmt::Display;
+use crate::result::{Result, Error::{NetErr, IoErr}};
 
-pub struct TcpConnection {
-    addr: SocketAddr,
-    stream: RefCell<TcpStream>,
-}
-
-impl TcpConnection {
-    pub fn connect<T: ToSocketAddrs + Display>(addr: &T, timeout: Duration) -> Result<Self> {
-        let addrs = addr.to_socket_addrs()?;
-        let addr = addrs.next().ok_or_else(|| Error::NoSocketAddrsFound(format!("{}", addr)))?;
-        let stream = TcpStream::connect(addr)?;
-        let stream = RefCell::from(stream);
-        Ok(TcpConnection { addr, stream })
-    }
+#[derive(Debug)]
+pub enum Error {
+    NoSocketAddrsFound(String),
+    NoStream,
 }
 
 pub trait Transport : Drop + Sized {
@@ -24,38 +16,62 @@ pub trait Transport : Drop + Sized {
     fn recv(&self, timeout: Duration) -> Result<()>;
 }
 
-pub trait Protocol<T: Transport> : Sized {
-    fn trans(&self) -> &T;
-}
-
 pub trait Connection : Drop + Sized {
     fn connect(&self, timeout: Duration) -> Result<()>;
     fn close(&self, timeout: Duration) -> Result<()>;
 }
 
-impl Drop for TcpConnection {
-    fn drop(&mut self) {
-        
+pub struct TcpConnection {
+    addr: SocketAddr,
+    stream: RefCell<Option<TcpStream>>,
+}
+
+impl TcpConnection {
+    pub fn create<T: ToSocketAddrs + Display>(addr: &T) -> Result<Self> {
+        let mut addrs = addr.to_socket_addrs()?;
+        let addr = addrs.next().ok_or_else(
+            || Error::NoSocketAddrsFound(format!("{}", addr)))?;
+        let conn = TcpConnection { addr, stream: RefCell::new(None) };
+        Ok(conn)
+    }
+
+    fn update_stream(&self, stream: Option<TcpStream>) -> Result<()> {
+        let last = self.stream.replace(stream);
+        if let Some(s) = last {
+            s.shutdown(Shutdown::Both);
+        }
+        Ok(())
     }
 }
 
-impl<T: Transport, P: Protocol<T>> Connection<T, P> for TcpConnection {
-
-
-    fn connect(&self, timeout: Duration) -> Result<()> {
-        unimplemented!()
+impl Drop for TcpConnection {
+    fn drop(&mut self) {
+        &self.close(Duration::from_secs(5u64));
     }
+}
 
+impl Connection for TcpConnection {
+    fn connect(&self, timeout: Duration) -> Result<()> {
+        let stream = TcpStream::connect_timeout(&self.addr, timeout)?;
+        self.update_stream(Some(stream))
+    }
+    
     fn close(&self, timeout: Duration) -> Result<()> {
-        unimplemented!()
+        self.update_stream(None)
     }
 }
 
 impl Transport for TcpConnection {
-    fn send(&self, buf: &[u8], timeout: Duration) -> Result<usize> {
+    fn send(&self, buf: &[u8], timeout: Duration) -> Result<()> {
         let len = buf.len();
-        self.stream.get_mut().write_all(buf)
+        if let Some(stream) = self.stream.borrow_mut().as_mut() {
+            stream.write_all(buf).map_err(|e| IoErr(e))
+        } else {
+            Err(NetErr(Error::NoStream))
+        }
     }
 
-    fn (&self, )
+    fn recv(&self, timeout: Duration) -> Result<()> {
+        unimplemented!()
+    }
 }

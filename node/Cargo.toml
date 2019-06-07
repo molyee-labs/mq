@@ -1,15 +1,17 @@
 [package]
-name = "node"
+name = "mq-node"
 version = "0.1.0"
 authors = ["Alex Sarapulov <1molyee@gmail.com>"]
 edition = "2018"
 publish = false
 
 [dependencies]
-#uuid = { path = "../../common/uuid" }
-uuid = { version = "*", features = ["v1", "v4"]}
+uuid = { path = "../../common/uuid", version = "*", features = ["v1", "v4"]}
 url = "*"
 timer = { path = "../../common/timer" }
 shared = { path = "../../common/shared" }
 pool = { path = "../../common/pool" }
 bytes = "*"
+merge = { path = "../../common/merge" }
+merge_derive = { path = "../../common/merge_derive" }
+tree = { path = "../../common/tree" }
