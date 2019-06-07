@@ -1,5 +1,5 @@
-use uuid::Uuid;
 use crate::channel;
+use uuid::Uuid;
 
 pub struct Id(Uuid);
 

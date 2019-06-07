@@ -1,7 +1,7 @@
 use crate::client;
+use shared;
 use std::time;
 use std::vec::Vec;
-use shared;
 
 struct Times {
     created: time::Instant,
@@ -10,7 +10,7 @@ struct Times {
 
 struct Subscription {
     client: client::Id,
-    times: time::Duration, 
+    times: time::Duration,
 }
 
 struct Statistics {
@@ -20,9 +20,7 @@ struct Statistics {
     bytes_out: u64,
 }
 
-struct State {
-
-}
+struct State {}
 
 struct Stream {
     state: State,
@@ -37,4 +35,4 @@ pub struct Channel {
     stream: shared::LinkMut<Option<Stream>>,
 }
 
-unsafe impl Sync for Channel { }
+unsafe impl Sync for Channel {}

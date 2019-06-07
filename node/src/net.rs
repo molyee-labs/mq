@@ -1,9 +1,12 @@
-use std::net::{SocketAddr, TcpStream, ToSocketAddrs, Shutdown};
-use std::time::Duration;
+use crate::result::{
+    Error::{IoErr, NetErr},
+    Result,
+};
 use std::cell::RefCell;
-use std::io::Write;
 use std::fmt::Display;
-use crate::result::{Result, Error::{NetErr, IoErr}};
+use std::io::Write;
+use std::net::{Shutdown, SocketAddr, TcpStream, ToSocketAddrs};
+use std::time::Duration;
 
 #[derive(Debug)]
 pub enum Error {
@@ -11,12 +14,12 @@ pub enum Error {
     NoStream,
 }
 
-pub trait Transport : Drop + Sized {
+pub trait Transport: Drop + Sized {
     fn send(&self, buf: &[u8], timeout: Duration) -> Result<()>;
     fn recv(&self, timeout: Duration) -> Result<()>;
 }
 
-pub trait Connection : Drop + Sized {
+pub trait Connection: Drop + Sized {
     fn connect(&self, timeout: Duration) -> Result<()>;
     fn close(&self, timeout: Duration) -> Result<()>;
 }
@@ -29,9 +32,13 @@ pub struct TcpConnection {
 impl TcpConnection {
     pub fn create<T: ToSocketAddrs + Display>(addr: &T) -> Result<Self> {
         let mut addrs = addr.to_socket_addrs()?;
-        let addr = addrs.next().ok_or_else(
-            || Error::NoSocketAddrsFound(format!("{}", addr)))?;
-        let conn = TcpConnection { addr, stream: RefCell::new(None) };
+        let addr = addrs
+            .next()
+            .ok_or_else(|| Error::NoSocketAddrsFound(format!("{}", addr)))?;
+        let conn = TcpConnection {
+            addr,
+            stream: RefCell::new(None),
+        };
         Ok(conn)
     }
 
@@ -55,7 +62,7 @@ impl Connection for TcpConnection {
         let stream = TcpStream::connect_timeout(&self.addr, timeout)?;
         self.update_stream(Some(stream))
     }
-    
+
     fn close(&self, timeout: Duration) -> Result<()> {
         self.update_stream(None)
     }

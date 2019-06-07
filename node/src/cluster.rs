@@ -1,7 +1,7 @@
-use std::cell::{RefCell};
-use std::net::TcpListener;
 use crate::config::ClusterConf;
 use crate::net::{Connection, TcpConnection};
+use std::cell::RefCell;
+use std::net::TcpListener;
 
 pub enum Node {
     Local(TcpListener),
@@ -24,7 +24,10 @@ impl Cluster {
             nodes.push(Node::Remote(conn));
         }
         let master = RefCell::new(-1);
-        Cluster { current, master, nodes }
+        Cluster {
+            current,
+            master,
+            nodes,
+        }
     }
 }
-

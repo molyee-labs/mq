@@ -1,7 +1,7 @@
-use url::HostAndPort;
+use merge_derive::Mix;
 use std::path::Path;
 use std::time::Duration;
-use merge_derive::Mix;
+use url::HostAndPort;
 
 pub struct NodeConf {
     pub addr: HostAndPort,
@@ -23,9 +23,7 @@ pub struct StorageConf {
 }
 
 #[derive(Mix)]
-pub struct AuthConf {
-    
-}
+pub struct AuthConf {}
 
 pub struct Config {
     pub node: NodeConf,

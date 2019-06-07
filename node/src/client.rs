@@ -1,6 +1,6 @@
-use crate::result::*;
 use crate::message::Msg;
 use crate::net::TcpConnection;
+use crate::result::*;
 
 pub type Id = u64;
 

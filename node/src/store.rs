@@ -1,4 +1,1 @@
-pub struct Storage {
-    
-}
-
+pub struct Storage {}

@@ -1,12 +1,12 @@
-use std::net::*;
-use std::collections::HashMap;
-use std::cell::RefCell;
-use timer::{self, SyncTimer};
-use crate::config;
 use crate::channel;
 use crate::client;
 use crate::cluster;
+use crate::config;
 use crate::store;
+use std::cell::RefCell;
+use std::collections::HashMap;
+use std::net::*;
+use timer::{self, SyncTimer};
 use tree::TrieMap;
 
 type Id = uuid::Uuid;
@@ -41,13 +41,17 @@ impl State {
         let stats = Statistics::new();
         let clients = HashMap::new();
         let channels = TrieMap::new();
-        State { stats, clients, channels }
+        State {
+            stats,
+            clients,
+            channels,
+        }
     }
 }
 
 pub struct Info {
     id: Id,
-    version: Version, 
+    version: Version,
     git_commit: &'static str,
 }
 
