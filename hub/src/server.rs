@@ -1,17 +1,17 @@
 use crate::channel;
-use crate::client;
-use crate::cluster;
+use crate::cluster::Cluster;
 use crate::config;
 use crate::store;
+use crate::node;
+use crate::net::Connection;
 use std::cell::RefCell;
 use std::collections::HashMap;
-use std::net::*;
+use std::sync::Arc;
 use timer::{self, SyncTimer};
-use tree::TrieMap;
-
-type Id = uuid::Uuid;
 
 const VERSION: &'static str = env!("CARGO_PKG_VERSION");
+
+type TrieMap<T> = HashMap<String, T>; // TODO
 
 struct Version(&'static str);
 
@@ -32,44 +32,63 @@ impl Statistics {
 
 pub struct State {
     stats: Statistics,
-    clients: HashMap<client::Id, client::Client>,
     channels: TrieMap<channel::Channel>,
 }
 
 impl State {
     fn new() -> Self {
         let stats = Statistics::new();
-        let clients = HashMap::new();
-        let channels = TrieMap::new();
+        let channels = HashMap::new();
         State {
             stats,
-            clients,
             channels,
         }
     }
 }
 
 pub struct Info {
-    id: Id,
+    id: node::Id,
     version: Version,
     git_commit: &'static str,
 }
 
+impl Info {
+    pub fn new(id: node::Id) -> Self {
+        Info {
+            id,
+            version: Version(VERSION),
+            git_commit: "unknown",
+        }
+    }
+}
+
 pub struct Server {
-    state: RefCell<State>,
-    cluster: cluster::Cluster,
-    config: config::Config,
+    state: State,
+    cluster: Cluster,
     info: Info,
     storage: store::Storage,
     timer: timer::SyncTimer,
-    listener: TcpListener,
 }
 
 impl Server {
-    pub fn start(conf: &config::Config) -> Self {
-        let state = RefCell::from(State::new());
+    pub fn new(conf: &config::Config) -> Self {
+        let node_id = node::Id::new();
+        let info = Info::new(node_id);
         let timer = timer::run::<SyncTimer>();
-        let listener = TcpListener::bind(&conf.node.addr).unwrap();
+        let state = State::new();
+        let hub = Hub::new(&conf.hub)
+        let cluster = Cluster::new(&conf.cluster);
+        let storage = store::Storage::new(&conf.storage);
+        Self {
+            state,
+            cluster,
+            info,
+            storage,
+            timer
+        }
+    }
+
+    pub fn run(&self) {
         unimplemented!()
     }
 

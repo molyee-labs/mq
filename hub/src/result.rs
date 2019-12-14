@@ -2,6 +2,8 @@
 pub enum Error {
     IoErr(std::io::Error),
     NetErr(crate::net::Error),
+    ConvertErr,
+    ConfigErr(crate::config::Error),
 }
 
 use Error::*;
