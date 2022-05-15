@@ -3,7 +3,7 @@ use crate::cluster::Cluster;
 use crate::config;
 use crate::store;
 use crate::node;
-use crate::net::Connection;
+use crate::net::{Connection, UdpHub};
 use std::cell::RefCell;
 use std::collections::HashMap;
 use std::sync::Arc;
@@ -63,9 +63,9 @@ impl Info {
 }
 
 pub struct Server {
+    info: Info,
     state: State,
     cluster: Cluster,
-    info: Info,
     storage: store::Storage,
     timer: timer::SyncTimer,
 }
@@ -76,13 +76,13 @@ impl Server {
         let info = Info::new(node_id);
         let timer = timer::run::<SyncTimer>();
         let state = State::new();
-        let hub = Hub::new(&conf.hub)
-        let cluster = Cluster::new(&conf.cluster);
         let storage = store::Storage::new(&conf.storage);
+        let cluster = Cluster::new(&conf.cluster);
+        let hub = UdpHub::bind(conf.network, &cluster);
         Self {
+            info,
             state,
             cluster,
-            info,
             storage,
             timer
         }

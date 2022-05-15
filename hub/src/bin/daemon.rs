@@ -1,5 +1,5 @@
 use crate::config;
-use crate::server::Server
+use crate::server::Server;
 
 fn main() {
     // TODO additional params from args

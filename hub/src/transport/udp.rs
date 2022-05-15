@@ -1,7 +1,8 @@
-use super::{Transport, ConnectListener, DataHandler};
+use super::{Transport, DataHandler};
 use crate::result::{Result, Error};
 use aio::net::{UdpSocket, ToSocketAddrs};
-use std::net::{SocketAddr, Ipv6Addr, Ipv4Addr, IpAddr};
+use std::net::{SocketAddr, Ipv4Addr, IpAddr};
+use std::collections::HashMap;
 use bytes::{BufMut, BytesMut};
 
 #[derive(PartialEq)]
@@ -32,83 +33,120 @@ impl From<Interface> for Ipv4Addr {
     }
 }
 
-#[derive(Default)]
 pub struct UdpOptions {
-    ttl: u32,
+    ttl: u8,
     mode: UdpMode,
     iface: Interface,
     capacity: usize,
+    max_capacity: usize,
+}
+
+impl UdpOptions {
+    pub fn new(ttl: u8, mode: UdpMode, iface: Interface, capacity: usize, max_capacity: usize) -> Self {
+        Self { ttl, mode, iface, capacity, max_capacity }
+    }
+}
+
+impl Default for UdpOptions {
+    fn default() -> Self {
+        Self::new(8, UdpMode::Multicast, 0.into(), 65535, 10485760)
+    }
 }
 
 pub struct UdpTransport {
     opts: UdpOptions,
-    sock: UdpSocket,
-    bytes: BytesMut,
+    sock: Option<UdpSocket>,
+    data: BytesMut,
 }
 
 impl UdpTransport {
-    pub async fn new<H: DataHandler + Send, A: ToSocketAddrs>(addr: A, opts: UdpOptions, handler: H) -> Result<Self> {
+    pub fn new(opts: UdpOptions) -> Self {
+        Self {
+            opts,
+            sock: None,
+            data: BytesMut::with_capacity(opts.capacity),
+        }
+    }
+
+    pub async fn bind<A: ToSocketAddrs>(self, addr: A) -> Result<()> {
+        info!("Binding to Udp socket addr '{}'", addr);
         let sock = UdpSocket::bind(addr).await?;
         let local_addr = sock.local_addr()
             .map_err(Error::IoErr)?;
         let ip = local_addr.ip();
-        sock.set_ttl(opts.ttl);
-        if opts.mode == UdpMode::Multicast {
+        sock.set_ttl(self.opts.ttl);
+        if self.opts.mode == UdpMode::Multicast {
+            let iface = self.opts.iface;
             match ip {
                 IpAddr::V4(ipv4) => {
-                    let iface = match opts.iface.into() {
+                    let iface = match iface.into() {
                         Ipv4Addr::UNSPECIFIED => ipv4,
                         x => x.into(),
                     };
                     sock.join_multicast_v4(ipv4, iface);
                 },
                 IpAddr::V6(ipv6) => {
-                    sock.join_multicast_v6(&ipv6, opts.iface.into());
+                    sock.join_multicast_v6(&ipv6, iface.into());
                 }
             }
         }
-        let bytes = BytesMut::with_capacity(opts.capacity);
-        let mut transport = Self { opts, sock, bytes };
-        aio::executor::spawn(transport.recv(handler));
-        Ok(transport)
+        self.sock = Some(sock);
+        aio::spawn(self.recv());
+        Ok(())
     }
 
-    pub async fn recv<H: DataHandler + Send>(&mut self, handler: H) -> Result<()> {
+    pub fn listen(&mut self, addr: SocketAddr, handler: &dyn DataHandler) {
+        info!("Add UdpSocket '{}' handler '{}'", addr, handler);
+        self.handlers.insert(addr, handler);
+    } 
+
+    pub fn unlisten(&mut self, addr: SocketAddr) {
+        let handler = self.handlers.remove(addr);
+        info!("Remove UdpSocket '{}' handler '{}'", addr, handler);
+    }
+
+    async fn recv(self) -> Result<()> {
         const MIN_FREE_BUF_SIZE: usize = 1024;
         loop {
-            let len = self.bytes.len();
-            let remaining = self.bytes.remaining_mut();
+            if self.data.capacity() >= self.opts.max_capacity {
+                todo!() 
+            }
+            let len = self.data.len();
+            let remaining = self.data.remaining_mut();
             let cap = if remaining < MIN_FREE_BUF_SIZE {
-                let cap = self.bytes.capacity() + MIN_FREE_BUF_SIZE;
-                self.bytes.reserve(cap);
+                let cap = self.data.capacity() + MIN_FREE_BUF_SIZE;
+                self.data.reserve(cap);
                 cap
             } else {
-                self.bytes.capacity()
+                self.data.capacity()
             };
-            let buf = self.bytes.bytes_mut();
-            let received = self.sock.recv(buf).await;
-            match received {
-                Ok(size) => self.bytes.set_len(len + size),
-                Err(e) => 
-            }
+            let buf = self.data.bytes_mut();
+            let received = self.sock?.recv(buf).await?;
+            self.data.set_len(len + received);
+            debug!("Received {} + {} bytes into UdpSocket '{}'", len, received, local_addr);
+            self.handle_data();
         }
+    }
+
+    fn handle_data(&mut self) {
+
     }
 }
 
 impl Transport for UdpTransport {
     fn connect(&mut self, addr: SocketAddr) {
-        unimplemented!();
+        todo!()
     }
 
     fn disconnect(&mut self, addr: SocketAddr) {
-        unimplemented!();
+        todo!()
     }
 
     fn send(&self, data: &[u8], addr: SocketAddr) {
-        unimplemented!();
+        todo!()
     }
 
     fn broadcast(&self, data: &[u8]) {
-        unimplemented!();
+        todo!()
     }
 }
